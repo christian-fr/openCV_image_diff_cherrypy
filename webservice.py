@@ -17,7 +17,10 @@ class MyWebService(object):
         return output.to_json()
 
 
+
+
+
 if __name__ == '__main__':
-    config = {'server.socket_host': '127.0.0.1'}
+    config = {'server.socket_host': '0.0.0.0'}
     cherrypy.config.update(config)
     cherrypy.quickstart(MyWebService())
