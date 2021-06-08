@@ -1,0 +1,15 @@
+$ docker build -t python-ws .
+$ docker run -p 9090:9090 python-ws
+
+# python script to check whether the webservice is working:
+import requests
+
+url = 'http://127.0.0.1:9090/upload'
+files = {'uploaded_file_1': open('/media/a/virtualbox/mediocretes_old.png', 'rb'), 'uploaded_file_2': open('/media/a/virtualbox/mediocretes_new.png', 'rb')}
+
+r = requests.post(url, files=files)
+
+print(r)
+print(r.text)
+with open('download1.png', 'wb') as f:
+    f.write(r.content)
