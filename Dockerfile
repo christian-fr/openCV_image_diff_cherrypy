@@ -8,15 +8,15 @@ RUN apt-get update ##[edited]
 RUN apt-get install ffmpeg libsm6 libxext6  -y
 
 # update pip
-RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir --upgrade pip
 
 # Install dependencies:
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY webservice.py .
 COPY openCV_diff_classes.py .
-EXPOSE 8080
-EXPOSE 9090
+
+EXPOSE 9191
 
 ENTRYPOINT ["python", "webservice.py"]
