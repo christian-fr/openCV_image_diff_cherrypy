@@ -14,12 +14,18 @@ absDir = os.path.join(os.getcwd(), localDir)
 config = {
     'global': {
         'server.socket_host': '0.0.0.0',
-        'server.socket_port': 8080,
+        'server.socket_port': 9191,
         'server.thread_pool': 8,
         'server.max_request_body_size': 0,
         'server.socket_timeout': 60
     }
 }
+
+
+def return_all_active_sessions():
+    sessions = os.listdir('./sessions')
+    sessions = filter(lambda session: '.lock' not in session, sessions)
+    return [entry for entry in sessions]
 
 
 def remove_all_png_files_from_subfolders(path_object: Path):
@@ -59,6 +65,9 @@ class App:
         self.logger.info('old files removed')
 
         allowed_extensions_list = ['.png']
+
+        cherrypy.session['Something'] = 'asdf'
+        self.logger.info(f'cherrypy session id: {cherrypy.session.id}')
 
         # Upload-Path
 
@@ -124,10 +133,21 @@ class App:
         self.logger.info(f'OpenCVDiff is done')
         self.logger.info(
             f'''path of file that is being sent back: "{os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1]}"''')
+
+        for file in []:
+            os.remove(file)
+
         return static.serve_file(os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1],
                                  'application/x-download',
                                  'attachment', input_filename_1 + '_modified' + input_extension_1)
 
+
+cherrypy.config.update({'tools.sessions.on': True,
+                        'tools.sessions.storage_class': cherrypy.lib.sessions.FileSession,
+                        'tools.sessions.storage_type': "File",
+                        'tools.sessions.storage_path': 'sessions',
+                        'tools.sessions.timeout': 10
+                        })
 
 if __name__ == '__main__':
     cherrypy.quickstart(App(), '/', config)
