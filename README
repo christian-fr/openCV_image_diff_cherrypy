@@ -16,10 +16,7 @@ for i in range(100):
 
     r = requests.post(url, files=files)
 
-    print(r)
-    print(r.text)
-
-    with open('download1.png', 'wb') as f:
+    with open(f'test/download{i}.png', 'wb') as f:
         f.write(r.content)
 
 toc = time.perf_counter()

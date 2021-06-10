@@ -7,6 +7,11 @@ from cherrypy.lib import static
 from openCV_diff_classes import OpenCVDiff
 from pathlib import Path
 import logging
+from delete_old_files import delete_old_files
+import time
+from io import BytesIO
+import base64
+import tempfile
 
 localDir = os.path.dirname(__file__)
 absDir = os.path.join(os.getcwd(), localDir)
@@ -61,14 +66,13 @@ class App:
     def upload(self, uploaded_file_1, uploaded_file_2):
         self.logger.info('upload started')
         self.logger.info('removing old files')
-        remove_all_png_files_from_subfolders(Path(absDir))
+        delete_old_files()
         self.logger.info('old files removed')
 
         allowed_extensions_list = ['.png']
 
         cherrypy.session['Something'] = 'asdf'
         self.logger.info(f'cherrypy session id: {cherrypy.session.id}')
-
         # Upload-Path
 
         # create strings with filename and extesion of uploaded file
@@ -89,11 +93,11 @@ class App:
             return f'Extension "{input_extension_2}" not allowed! Filename: "{uploaded_file_2.filename}"'
 
         # create string with full path of uploaded file
-        input_file_1 = os.path.join(absDir, 'input_1' + input_extension_1)
+        input_file_1 = os.path.join(absDir, cherrypy.session.id + '_input_1' + input_extension_1)
         self.logger.info(
             f'input_file_1: "{input_file_1}"')
 
-        input_file_2 = os.path.join(absDir, 'input_2' + input_extension_2)
+        input_file_2 = os.path.join(absDir, cherrypy.session.id + '_input_2' + input_extension_2)
         self.logger.info(
             f'input_file_2: "{input_file_2}"')
 
@@ -108,6 +112,7 @@ class App:
 
             while True:
                 data = uploaded_file_1.file.read(8192)
+
                 if not data:
                     break
                 file1.write(data)
@@ -129,22 +134,44 @@ class App:
 
         self.logger.info(f'starting up OpenCVDiff')
 
-        OpenCVDiff(file1=input_file_1, file2=input_file_2)
+        output_path1 = os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1]
+
+        open_cv_object = OpenCVDiff(file1=input_file_1,
+                                    file2=input_file_2,
+                                    output_path1=output_path1,
+                                    output_path2=None)
+        open_cv_object.write_images_to_output_paths()
+
+        # bytes_string_image1, bytes_string_image2 = open_cv_object.return_base64_string_tuple()
         self.logger.info(f'OpenCVDiff is done')
-        self.logger.info(
-            f'''path of file that is being sent back: "{os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1]}"''')
 
-        for file in []:
-            os.remove(file)
+        # # prepare temporary file to send back
+        # tmpfile1 = tempfile.NamedTemporaryFile()
+        # output_file2 = Path(tmpfile1.name)
+        #
+        # tmpfile1.write(bytes_string_image2)
 
-        return static.serve_file(os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1],
+        self.logger.info(f'cleaning up uploaded files')
+        # clean up uploaded files
+        list_of_temporary_files = [input_file_1, input_file_2]
+        os.remove(input_file_1)
+        os.remove(input_file_2)
+        self.logger.info(f'uploaded files successfully cleaned up {[input_file_1, input_file_2]}')
+
+        # self.logger.info(
+        #     f'''path of file that is being sent back: "{os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1]}"''')
+        time.sleep(1)
+        return static.serve_file(output_path1,
                                  'application/x-download',
                                  'attachment', input_filename_1 + '_modified' + input_extension_1)
+        # return static.serve_file(os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1],
+        #                          'application/x-download',
+        #                          'attachment', input_filename_1 + '_modified' + input_extension_1)
 
 
 cherrypy.config.update({'tools.sessions.on': True,
                         'tools.sessions.storage_class': cherrypy.lib.sessions.FileSession,
-                        'tools.sessions.storage_type': "File",
+                        'tools.sessions.storage_type': "file",
                         'tools.sessions.storage_path': 'sessions',
                         'tools.sessions.timeout': 10
                         })
