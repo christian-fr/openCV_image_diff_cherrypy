@@ -17,6 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY webservice.py .
 COPY openCV_diff_classes.py .
+COPY delete_old_files.py .
+
+#RUN touch cherrypy_access.log
+#RUN touch cherrypy_error.log
+
 
 EXPOSE 9191
 

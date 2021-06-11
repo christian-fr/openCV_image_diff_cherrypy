@@ -1,6 +1,6 @@
 # build and run docker container
 $ docker build -t python-ws .
-$ docker run -p 9191:9191 python-ws
+$ docker run -d -p 9191:9191 python-ws
 
 # python script to check whether the webservice is working:
 import requests

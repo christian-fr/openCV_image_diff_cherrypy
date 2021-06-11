@@ -3,7 +3,7 @@
 
 import os
 import cherrypy
-from cherrypy.lib import static
+from cherrypy.lib import static, sessions
 from openCV_diff_classes import OpenCVDiff
 from pathlib import Path
 import logging
@@ -13,8 +13,10 @@ from io import BytesIO
 import base64
 import tempfile
 
-localDir = os.path.dirname(__file__)
-absDir = os.path.join(os.getcwd(), localDir)
+local_dir = os.path.dirname(__file__)
+abs_dir = os.path.join(os.getcwd(), local_dir)
+tmp_subdir = Path('tmp')
+abs_tmp_subdir = Path(abs_dir, tmp_subdir)
 
 config = {
     'global': {
@@ -22,7 +24,9 @@ config = {
         'server.socket_port': 9191,
         'server.thread_pool': 8,
         'server.max_request_body_size': 0,
-        'server.socket_timeout': 60
+        'server.socket_timeout': 60,
+        'log.access_file': f'{Path(abs_dir, "cherrypy_access.log")}',
+        'log.error_file': f'{Path(abs_dir, "cherrypy_error.log")}'
     }
 }
 
@@ -49,6 +53,10 @@ class App:
         self.logger = logging.getLogger('debug')
         self.startup_logger(log_level=logging.DEBUG)
         self.logger.info('starting up webservice')
+        if not abs_tmp_subdir.exists():
+            os.mkdir(abs_tmp_subdir)
+        else:
+            delete_old_files(abs_tmp_subdir)
 
     def startup_logger(self, log_level=logging.DEBUG):
         """
@@ -62,11 +70,13 @@ class App:
         fh.setFormatter(fh_format)
         self.logger.addHandler(fh)
 
+
     @cherrypy.expose
     def upload(self, uploaded_file_1, uploaded_file_2):
+        cherrypy.session.acquire_lock()
         self.logger.info('upload started')
         self.logger.info('removing old files')
-        delete_old_files()
+        delete_old_files(abs_tmp_subdir)
         self.logger.info('old files removed')
 
         allowed_extensions_list = ['.png']
@@ -93,16 +103,13 @@ class App:
             return f'Extension "{input_extension_2}" not allowed! Filename: "{uploaded_file_2.filename}"'
 
         # create string with full path of uploaded file
-        input_file_1 = os.path.join(absDir, cherrypy.session.id + '_input_1' + input_extension_1)
+        input_file_1 = os.path.join(abs_tmp_subdir, cherrypy.session.id + '_input_1' + input_extension_1)
         self.logger.info(
             f'input_file_1: "{input_file_1}"')
 
-        input_file_2 = os.path.join(absDir, cherrypy.session.id + '_input_2' + input_extension_2)
+        input_file_2 = os.path.join(abs_tmp_subdir, cherrypy.session.id + '_input_2' + input_extension_2)
         self.logger.info(
             f'input_file_2: "{input_file_2}"')
-
-        print(f'input_file1: "{input_file_1}"')
-        print(f'input_file2: "{input_file_2}"')
 
         # DEV DEBUG obsolete, but maybe useful for debugging
         size_1, size_2 = 0, 0
@@ -131,16 +138,27 @@ class App:
 
                 # DEV DEBUG obsolete, but may be useful for debugging
                 size_2 += len(data)
+        cherrypy.session.release_lock()
+
+        self.logger.info(f'size of file1: {size_1}')
+        self.logger.info(f'size of file2: {size_2}')
 
         self.logger.info(f'starting up OpenCVDiff')
 
         output_path1 = os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1]
 
-        open_cv_object = OpenCVDiff(file1=input_file_1,
-                                    file2=input_file_2,
-                                    output_path1=output_path1,
-                                    output_path2=None)
-        open_cv_object.write_images_to_output_paths()
+        while True:
+            try:
+                open_cv_object = OpenCVDiff(file1=input_file_1,
+                                            file2=input_file_2,
+                                            output_path1=output_path1,
+                                            output_path2=None)
+                open_cv_object.write_images_to_output_paths()
+                break
+            except:
+                continue
+
+        del open_cv_object
 
         # bytes_string_image1, bytes_string_image2 = open_cv_object.return_base64_string_tuple()
         self.logger.info(f'OpenCVDiff is done')
@@ -160,7 +178,10 @@ class App:
 
         # self.logger.info(
         #     f'''path of file that is being sent back: "{os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1]}"''')
-        time.sleep(1)
+
+        # terminate session (?)
+        cherrypy.lib.sessions.expire()
+
         return static.serve_file(output_path1,
                                  'application/x-download',
                                  'attachment', input_filename_1 + '_modified' + input_extension_1)
@@ -171,8 +192,8 @@ class App:
 
 cherrypy.config.update({'tools.sessions.on': True,
                         'tools.sessions.storage_class': cherrypy.lib.sessions.FileSession,
-                        'tools.sessions.storage_type': "file",
-                        'tools.sessions.storage_path': 'sessions',
+                        'tools.sessions.storage_type': "ram",
+                        # 'tools.sessions.storage_path': 'sessions',
                         'tools.sessions.timeout': 10
                         })
 
