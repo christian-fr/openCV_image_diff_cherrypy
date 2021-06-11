@@ -8,6 +8,7 @@ from openCV_diff_classes import OpenCVDiff
 from pathlib import Path
 import logging
 from delete_old_files import delete_old_files
+import hashlib
 
 local_dir = os.path.dirname(__file__)
 abs_dir = os.path.join(os.getcwd(), local_dir)
@@ -134,6 +135,8 @@ class App:
                 # DEV DEBUG obsolete, but may be useful for debugging
                 size_2 += len(data)
         cherrypy.session.release_lock()
+
+        # ToDo 2021-06-11: try out md5hash of files to compare them, fire up openCV only if images differ from each other!
 
         self.logger.info(f'size of file1: {size_1}')
         self.logger.info(f'size of file2: {size_2}')
