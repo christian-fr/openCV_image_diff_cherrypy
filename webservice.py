@@ -8,10 +8,6 @@ from openCV_diff_classes import OpenCVDiff
 from pathlib import Path
 import logging
 from delete_old_files import delete_old_files
-import time
-from io import BytesIO
-import base64
-import tempfile
 
 local_dir = os.path.dirname(__file__)
 abs_dir = os.path.join(os.getcwd(), local_dir)
@@ -31,11 +27,11 @@ config = {
 }
 
 
-def return_all_active_sessions():
-    sessions = os.listdir('./sessions')
-    sessions = filter(lambda session: '.lock' not in session, sessions)
-    return [entry for entry in sessions]
-
+# def return_all_active_sessions():
+#     sessions = os.listdir('./sessions')
+#     sessions = filter(lambda session: '.lock' not in session, sessions)
+#     return [entry for entry in sessions]
+#
 
 def remove_all_png_files_from_subfolders(path_object: Path):
     set_of_files_to_remove = set()
@@ -69,7 +65,6 @@ class App:
                                       '%(levelname)-8s\t%(message)s')
         fh.setFormatter(fh_format)
         self.logger.addHandler(fh)
-
 
     @cherrypy.expose
     def upload(self, uploaded_file_1, uploaded_file_2):
@@ -171,7 +166,6 @@ class App:
 
         self.logger.info(f'cleaning up uploaded files')
         # clean up uploaded files
-        list_of_temporary_files = [input_file_1, input_file_2]
         os.remove(input_file_1)
         os.remove(input_file_2)
         self.logger.info(f'uploaded files successfully cleaned up {[input_file_1, input_file_2]}')
