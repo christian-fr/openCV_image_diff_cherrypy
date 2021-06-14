@@ -9,6 +9,7 @@ from pathlib import Path
 import logging
 from delete_old_files import delete_old_files
 import hashlib
+from typing import Union
 
 local_dir = os.path.dirname(__file__)
 abs_dir = os.path.join(os.getcwd(), local_dir)
@@ -72,7 +73,7 @@ class App:
         cherrypy.session.acquire_lock()
         self.logger.info('session cleanup started - removing old files')
         tmp_session_output_file_path = Path(
-            f'/home/a/PycharmProjects/OpenCV_image_diff/tmp/{session_id}_input_1_modified.png')
+            f'{abs_dir}/tmp/{session_id}_input_1_modified.png')
         self.logger.info(f'file to be deleted: "{tmp_session_output_file_path}"')
         if Path(tmp_session_output_file_path).exists():
             os.remove(tmp_session_output_file_path)
@@ -80,51 +81,58 @@ class App:
         else:
             self.logger.info(f'file "{tmp_session_output_file_path}" does not exist.')
 
+    # # DEV could be implemented, but I am not sure if this is really useful - can those PNG files really be identical?
+    # @staticmethod
+    # def check_if_identical(self, input_file1: Union[str, Path], input_file2: Union[str, Path]):
+    #     with open(input_file1, 'r') as input_file1:
+    #         with open(input_file2, 'r') as input_file2:
+    #             difference = set(input_file1).difference(input_file2)
+    #     return True
+
     @cherrypy.expose
     def upload(self, uploaded_file_1, uploaded_file_2):
         cherrypy.session.acquire_lock()
         self.logger.info('upload started')
-        self.logger.info('removing old files')
-
-        # delete_old_files(abs_tmp_subdir)
-
-        self.logger.info('old files removed')
 
         allowed_extensions_list = ['.png']
 
         cherrypy.session['Something'] = 'asdf'
         self.logger.info(f'cherrypy session id: {cherrypy.session.id}')
+
         # Upload-Path
-
-        # create strings with filename and extesion of uploaded file
-
+        # create strings with filename and extension of uploaded file 1:
         input_filename_1, input_extension_1 = os.path.splitext(uploaded_file_1.filename)
         self.logger.info(
             f'input filenames set; input_filename_1: "{input_filename_1}", input_extension_1: "{input_extension_1}"')
 
+        # check if file extension is in allowed_extensions_list
         if input_extension_1.lower() not in allowed_extensions_list:
             return f'Extension "{input_extension_1}" not allowed! Filename: "{uploaded_file_1.filename}"'
 
-        # create strings with filename and extesion of uploaded file
+        # create strings with filename and extesion of uploaded file 2:
         input_filename_2, input_extension_2 = os.path.splitext(uploaded_file_2.filename)
         self.logger.info(
             f'input filenames set; input_filename_2: "{input_filename_2}", input_extension_2: "{input_extension_2}"')
 
+        # check if file extension is in allowed_extensions_list
         if input_extension_2.lower() not in allowed_extensions_list:
             return f'Extension "{input_extension_2}" not allowed! Filename: "{uploaded_file_2.filename}"'
 
-        # create string with full path of uploaded file
+        # create strings with full path of uploaded file
+        # for uploaded file 1
         input_file_1 = os.path.join(abs_tmp_subdir, cherrypy.session.id + '_input_1' + input_extension_1)
         self.logger.info(
             f'input_file_1: "{input_file_1}"')
 
+        # for uploaded file 2
         input_file_2 = os.path.join(abs_tmp_subdir, cherrypy.session.id + '_input_2' + input_extension_2)
         self.logger.info(
             f'input_file_2: "{input_file_2}"')
 
-        # DEV DEBUG obsolete, but maybe useful for debugging
+        # DEV DEBUG obsolete, but maybe useful for debugging - variables for upload size
         size_1, size_2 = 0, 0
 
+        # read uploaded file 1, write to local input_file_1
         with open(input_file_1, 'wb') as file1:
             self.logger.info(f'writing "uploaded_file_1" to: "{input_file_1}"')
 
@@ -138,6 +146,7 @@ class App:
                 # DEV DEBUG obsolete, but may be useful for debugging
                 size_1 += len(data)
 
+        # read uploaded file 2, write to local input_file_2
         with open(input_file_2, 'wb') as file2:
             self.logger.info(f'writing "uploaded_file_2" to: "{input_file_2}"')
 
@@ -152,6 +161,10 @@ class App:
         cherrypy.session.release_lock()
 
         # ToDo 2021-06-11: try out md5hash of files to compare them, fire up openCV only if images differ from each other!
+
+        # if hashlib.md5(input_file_1).hexdigest() != hashlib.md5(input_file_2).hexdigest():
+        # self.logger.info(hashlib.md5(input_file_1).hexdigest())
+        # self.logger.info(hashlib.md5(input_file_2).hexdigest())
 
         self.logger.info(f'size of file1: {size_1}')
         self.logger.info(f'size of file2: {size_2}')
