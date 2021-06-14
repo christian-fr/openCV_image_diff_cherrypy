@@ -68,11 +68,26 @@ class App:
         self.logger.addHandler(fh)
 
     @cherrypy.expose
+    def session_cleanup(self, session_id):
+        cherrypy.session.acquire_lock()
+        self.logger.info('session cleanup started - removing old files')
+        tmp_session_output_file_path = Path(
+            f'/home/a/PycharmProjects/OpenCV_image_diff/tmp/{session_id}_input_1_modified.png')
+        self.logger.info(f'file to be deleted: "{tmp_session_output_file_path}"')
+        if Path(tmp_session_output_file_path).exists():
+            os.remove(tmp_session_output_file_path)
+            self.logger.info(f'file "{tmp_session_output_file_path}" has been deleted.')
+        else:
+            self.logger.info(f'file "{tmp_session_output_file_path}" does not exist.')
+
+    @cherrypy.expose
     def upload(self, uploaded_file_1, uploaded_file_2):
         cherrypy.session.acquire_lock()
         self.logger.info('upload started')
         self.logger.info('removing old files')
-        delete_old_files(abs_tmp_subdir)
+
+        # delete_old_files(abs_tmp_subdir)
+
         self.logger.info('old files removed')
 
         allowed_extensions_list = ['.png']
@@ -155,8 +170,10 @@ class App:
                 break
             except:
                 continue
+        self.logger.info(f'output_path1: {output_path1}')
 
         del open_cv_object
+        self.logger.info(f'openCV object deleted')
 
         # bytes_string_image1, bytes_string_image2 = open_cv_object.return_base64_string_tuple()
         self.logger.info(f'OpenCVDiff is done')
@@ -181,7 +198,7 @@ class App:
 
         return static.serve_file(output_path1,
                                  'application/x-download',
-                                 'attachment', input_filename_1 + '_modified' + input_extension_1)
+                                 'attachment', input_filename_1 + '_modified' + input_extension_1 + 'hui')
         # return static.serve_file(os.path.splitext(input_file_1)[0] + '_modified' + os.path.splitext(input_file_1)[1],
         #                          'application/x-download',
         #                          'attachment', input_filename_1 + '_modified' + input_extension_1)
