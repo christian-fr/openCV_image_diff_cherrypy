@@ -2,27 +2,28 @@
 $ docker build -t python-ws .
 $ docker run -d -p 9191:9191 python-ws
 
+
+# test webservice using cURL
+curl -v -F "uploaded_file_1=@/media/a/virtualbox/00__index##1040x1024##de_alt.png" -F "uploaded_file_2=@/media/a/virtualbox/00__index##1040x1024##de_neu.png" localhost:9191/upload --output download.png
+
+
+
 # python script to check whether the webservice is working:
-import requests
-import time
+    import requests
+    import time
 
-url = 'http://127.0.0.1:9191/upload'
-files = {'uploaded_file_1': open('/media/a/virtualbox/00__index##1040x1024##de_alt.png', 'rb'), 'uploaded_file_2': open('/media/a/virtualbox/00__index##1040x1024##de_neu.png', 'rb')}
+    url = 'http://127.0.0.1:9191/upload'
+    files = {'uploaded_file_1': open('/media/a/virtualbox/00__index##1040x1024##de_alt.png', 'rb'), 'uploaded_file_2': open('/media/a/virtualbox/00__index##1040x1024##de_neu.png', 'rb')}
 
-import time
-tic = time.perf_counter()
-
-for i in range(100):
+    import time
+    tic = time.perf_counter()
 
     r = requests.post(url, files=files)
 
     with open(f'test/download{i}.png', 'wb') as f:
         f.write(r.content)
 
-toc = time.perf_counter()
-print(f'total: {toc-tic:0.4f} seconds')
+    toc = time.perf_counter()
 
-
-# test webservice using cURL
-curl -F "uploaded_file_1=@/media/a/virtualbox/00__index##1040x1024##de_alt.png" -F "uploaded_file_2=@/media/a/virtualbox/00__index##1040x1024##de_neu.png" localhost:9191/upload --output download.png
+    print(f'total: {toc-tic:0.4f} seconds')
 
